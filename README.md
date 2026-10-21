@@ -10,28 +10,28 @@ This project demonstrates a multi-tier defense system combining **perimeter dece
 
 ```mermaid
 flowchart TD
-    subgraph External ["Ext. Recon / Offense Node (Kali Linux)"]
-        Attacker[Attacker / Scanner]
+    subgraph External ["External Attacker - Kali Linux"]
+        Attacker["Attacker / Scanner"]
     end
 
-    subgraph AzureHost ["Azure Target VM (srv-clinica-core)"]
+    subgraph AzureHost ["Azure Target VM - srv-clinica-core"]
         subgraph Perimeter ["Perimeter Layer"]
-            Cowrie["Cowrie Decoy SSH (TCP/22)"]
-            RealSSH["Admin SSH (TCP/2222)"]
+            Cowrie["Cowrie Decoy SSH - TCP 22"]
+            RealSSH["Admin SSH - TCP 2222"]
         end
 
-        subgraph Internal ["Internal Network Traps"]
-            SMB["Python Honeyport (TCP/445)"]
+        subgraph Internal ["Internal Traps"]
+            SMB["Python Honeyport - TCP 445"]
         end
 
         subgraph KernelTelemetry ["Kernel Auditing Layer"]
-            DecoyData[("Decoy EHR Data (/srv/clinica/)")]
-            AuditdSub["auditd (System Call Tracing)"]
+            DecoyData[("Decoy EHR Data - /srv/clinica")]
+            AuditdSub["auditd - System Call Tracing"]
             DecoyData -.->|openat / execve| AuditdSub
         end
 
         subgraph Automation ["Active Response Engine"]
-            Orchestrator["Detection Orchestrator (Python)"]
+            Orchestrator["Orchestrator - Python"]
             IPTables["Dynamic iptables Isolation"]
         end
     end
