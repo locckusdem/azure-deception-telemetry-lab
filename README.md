@@ -8,24 +8,43 @@ This project demonstrates a multi-tier defense system combining **perimeter dece
 
 ## 📌 Architecture & Attack Flow
 
-```text
-[ External Attacker / Recon (Kali Linux) ]
-             │
-             ├──> [ Perimeter Layer (Azure VM) ]
-             │      └── Cowrie SSH Honeypot (Port TCP/22)
-             │            └── Telemetry: cowrie.json (Brute-force / Command logging)
-             │
-             ├──> [ Internal Network Layer ]
-             │      └── Python Honeyport (Decoy SMB TCP/445)
-             │            └── Triggers automated firewall mitigation
-             │
-             └──> [ Data Layer (Decoy Electronic Health Records) ]
-                    └── Monitored via Linux Kernel Audit (auditd)
-                          └── Inmutable syscall tracing (execve, openat)
-                                  │
-                                  ▼
-                    [ Automated Response Pipeline (Python) ]
-                          └── Dynamic temporary iptables isolation
+```mermaid
+flowchart TD
+    subgraph External ["Ext. Recon / Offense Node (Kali Linux)"]
+        Attacker[Attacker / Scanner]
+    end
+
+    subgraph AzureHost ["Azure Target VM (srv-clinica-core)"]
+        subgraph Perimeter ["Perimeter Layer"]
+            Cowrie["Cowrie Decoy SSH (TCP/22)"]
+            RealSSH["Admin SSH (TCP/2222)"]
+        end
+
+        subgraph Internal ["Internal Network Traps"]
+            SMB["Python Honeyport (TCP/445)"]
+        end
+
+        subgraph KernelTelemetry ["Kernel Auditing Layer"]
+            DecoyData[("Decoy EHR Data (/srv/clinica/)")]
+            AuditdSub["auditd (System Call Tracing)"]
+            DecoyData -.->|openat / execve| AuditdSub
+        end
+
+        subgraph Automation ["Active Response Engine"]
+            Orchestrator["Detection Orchestrator (Python)"]
+            IPTables["Dynamic iptables Isolation"]
+        end
+    end
+
+    Attacker -->|Port Scan / Brute-force| Cowrie
+    Attacker -->|Unauthorized Probe| SMB
+    Attacker -->|Unauthorized Access| DecoyData
+
+    Cowrie -->|cowrie.json| Orchestrator
+    SMB -->|Port Violation| Orchestrator
+    AuditdSub -->|audit.log| Orchestrator
+
+    Orchestrator -->|Automated Drop Rule| IPTables
 ```
 
 ---
