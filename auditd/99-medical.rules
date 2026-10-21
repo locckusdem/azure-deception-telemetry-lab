@@ -1,0 +1,7 @@
+## Decoy Electronic Health Records (Honeytokens)
+-w /srv/clinica/ehr_backup.sql -p rwa -k trampa_clinica_ehr
+-w /srv/clinica/pacientes_db.txt -p rwa -k trampa_clinica_ehr
+
+## Sensitive credential manipulation
+-w /etc/sudoers -p wa -k sys_priv_escalation
+-w /etc/shadow -p wa -k sys_creds_tampering

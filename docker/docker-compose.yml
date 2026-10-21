@@ -1,0 +1,22 @@
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: cowrie-honeypot
+    restart: unless-stopped
+    ports:
+      - "22:2222"
+    volumes:
+      - cowrie-var:/cowrie/cowrie-git/var
+      - cowrie-etc:/cowrie/cowrie-git/etc
+    environment:
+      - COWRIE_TELNET_ENABLED=no
+    networks:
+      - honeynet
+
+volumes:
+  cowrie-var:
+  cowrie-etc:
+
+networks:
+  honeynet:
+    driver: bridge
