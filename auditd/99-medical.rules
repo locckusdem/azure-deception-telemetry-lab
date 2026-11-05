@@ -1,7 +1,7 @@
-## Decoy Electronic Health Records (Honeytokens)
--w /srv/clinica/ehr_backup.sql -p rwa -k trampa_clinica_ehr
--w /srv/clinica/pacientes_db.txt -p rwa -k trampa_clinica_ehr
+## Linux Kernel Audit Rules (auditd) - Assume Breach Honeytoken Telemetry
+##
+## Monitors read (r), write (w), and attribute change (a) syscalls on the
+## decoy database credentials file. Execute (x) is intentionally omitted since
+## .env files are configuration artifacts rather than executable binaries.
 
-## Sensitive credential manipulation
--w /etc/sudoers -p wa -k sys_priv_escalation
--w /etc/shadow -p wa -k sys_creds_tampering
+-w /opt/clinica/datos/pacientes_db_credenciales.env -p rwa -k honeytoken_acceso
