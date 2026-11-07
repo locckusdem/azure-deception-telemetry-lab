@@ -1,0 +1,23 @@
+[Unit]
+Description=Assume Breach SOC Orchestrator (Honeytoken + Honeyports SOAR)
+After=network-online.target auditd.service
+Wants=network-online.target auditd.service
+
+[Service]
+Type=simple
+# PoC runs as root to read /var/log/audit/audit.log, bind TCP/445 (<1024),
+# and invoke PAM/process containment commands (usermod, passwd, chsh, pkill).
+# Production hardening: split listener via CAP_NET_BIND_SERVICE + scoped sudoers.
+User=root
+Group=root
+EnvironmentFile=-/etc/clinica/soc-orchestrator.env
+ExecStart=/usr/bin/python3 /opt/clinica/bin/soc_orchestrator.py
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
