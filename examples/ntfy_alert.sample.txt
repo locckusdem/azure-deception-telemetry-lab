@@ -1,0 +1,15 @@
+POST https://ntfy.sh/<PRIVATE_SOC_TOPIC>
+Headers:
+  Title: [CMS-SOC] Automated Containment: marianela_recepcion
+  Priority: urgent
+  Tags: rotating_light,lock,shield
+
+Body:
+Security Alert: Unauthorized deception trigger detected.
+- Ticket: CMS-INC-2026-1793223017
+- Compromised Account: marianela_recepcion (UID: 1001)
+- Deception Trigger: HONEYPORT_SCAN
+- Details: Internal probe detected on TCP/3389 (RDP) from 127.0.0.1
+
+SOAR Action: Account locked at PAM layer and active sessions terminated.
+Status: Pending credential rotation and incident remediation.
