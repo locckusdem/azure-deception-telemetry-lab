@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "dev/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bytecode compile check
+        run: python3 -m py_compile src/__init__.py src/soc_orchestrator.py tests/test_soc_orchestrator.py
+
+      - name: Shell script syntax check
+        run: bash -n scripts/setup_lab.sh scripts/recover_account.sh
+
+      - name: Validate sample forensic JSONL
+        run: python3 -c "import json; [json.loads(line) for line in open('examples/soc_actions.sample.jsonl', encoding='utf-8')]"
+
+      - name: Run unit and integration tests
+        run: python3 -m unittest discover -s tests -v
