@@ -20,7 +20,7 @@ This playbook reproduces the two *Assume Breach* validation scenarios executed o
    ```bash
    sudo systemctl status soc-orchestrator.service
    ```
-4. Keep an administrative SSH session open on a **separate admin account** (e.g., `lucioemi` on `TCP/2222`) to observe logs and restore the test account between scenarios.
+4. Keep an administrative SSH session open on a **separate admin account** (e.g., `<admin_user>` on `TCP/2222`) to observe logs and restore the test account between scenarios.
 
 ---
 

@@ -5,7 +5,7 @@
 This architecture addresses **post-compromise detection and automated containment (*Assume Breach*)** for a resource-constrained small-to-medium healthcare environment (*Centro Médico del Sur* reference case).
 
 - **Host Profile:** Azure `Standard_B1s` (1 vCPU, 1 GB RAM), Debian 12 (`srv-clinica-core`).
-- **Administrative Plane:** SSH relocated to `TCP/2222` with key-based authentication (`lucioemi` admin account), separated from the synthetic compromised user (`marianela_recepcion`, `UID 1001`).
+- **Administrative Plane:** SSH relocated to `TCP/2222` with key-based authentication (`<admin_user>` account), separated from the synthetic compromised user (`marianela_recepcion`, `UID 1001`).
 - **Core Problem:** Traditional perimeter controls (firewall, AV) rarely trigger high-confidence alerts when an attacker authenticates with **valid stolen credentials** (e.g., via phishing) and operates using native OS binaries (*Living off the Land*).
 
 ## 2. Detection & SOAR Pipeline
