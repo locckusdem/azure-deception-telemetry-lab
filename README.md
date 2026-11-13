@@ -1,116 +1,116 @@
-# 🛡️ Cloud Deception & Kernel Telemetry Architecture (Healthcare Scenario)
+# Cloud Deception, Kernel Telemetry & Automated Response Lab
 
-An active deception, threat-detection, and incident containment architecture designed for a distributed medical infrastructure scenario (*Centro Médico del Sur*).
+An **Assume Breach** deception and lightweight SOAR (Security Orchestration, Automation, and Response) proof-of-concept engineered for resource-constrained SMB healthcare environments (*Centro Médico del Sur* reference scenario).
 
-This project demonstrates a multi-tier defense system combining **perimeter deception (Cowrie Honeypot)**, **internal network traps (SMB Honeyport)**, and **kernel-level telemetry (auditd)** to identify and mitigate intrusions prior to lateral movement or data exfiltration.
+Rather than relying on heavy perimeter honeypots or SIEM stacks, this project combines **Linux kernel telemetry (`auditd`)**, **passive internal TCP honeyports (`445/SMB`, `3389/RDP`)**, **PAM-level identity containment**, **structured JSONL incident ticketing**, and **GRC control traceability (ISO/IEC 27001/27002/27005 & NIST CSF 2.0)** in a zero-dependency Python daemon (~10.6 MB RAM footprint on Debian 12 / Azure `Standard_B1s`).
 
 ---
 
-## 📌 Architecture & Attack Flow
+## Architecture & Response Flow
 
 ```mermaid
 flowchart TD
-    subgraph External ["External Attacker - Kali Linux"]
-        Attacker["Attacker / Scanner"]
+    subgraph CompromisedSession ["Assume Breach Context - srv-clinica-core (Debian 12)"]
+        Actor["Compromised Local Account (UID 1001)"]
+        DecoyEnv["Decoy Credentials (.env)<br/>/opt/clinica/datos/pacientes_db_credenciales.env"]
+        HoneyPorts["Passive TCP Honeyports<br/>TCP/445 (SMB) & TCP/3389 (RDP)"]
+        Auditd["Linux Kernel auditd<br/>key: honeytoken_acceso"]
     end
 
-    subgraph AzureHost ["Azure Target VM - srv-clinica-core"]
-        subgraph Perimeter ["Perimeter Layer"]
-            Cowrie["Cowrie Decoy SSH - TCP 22"]
-            RealSSH["Admin SSH - TCP 2222"]
-        end
-
-        subgraph Internal ["Internal Traps"]
-            SMB["Python Honeyport - TCP 445"]
-        end
-
-        subgraph KernelTelemetry ["Kernel Auditing Layer"]
-            DecoyData[("Decoy EHR Data - /srv/clinica")]
-            AuditdSub["auditd - System Call Tracing"]
-            DecoyData -.->|openat / execve| AuditdSub
-        end
-
-        subgraph Automation ["Active Response Engine"]
-            Orchestrator["Orchestrator - Python"]
-            IPTables["Dynamic iptables Isolation"]
-        end
+    subgraph SOAR ["SOC Orchestrator - src/soc_orchestrator.py"]
+        Watcher["Log Tail + Socket Listeners<br/>(Cooldown & UID Resolution)"]
+        PAM["PAM Containment Engine<br/>usermod expiredate + passwd -l<br/>chsh nologin + pkill -KILL"]
+        Forensics["JSONL Incident Tickets<br/>/opt/clinica/logs/soc_actions.log"]
+        Notify["Push Alerting<br/>ntfy.sh HTTP POST"]
     end
 
-    Attacker -->|Port Scan / Brute-force| Cowrie
-    Attacker -->|Unauthorized Probe| SMB
-    Attacker -->|Unauthorized Access| DecoyData
-
-    Cowrie -->|cowrie.json| Orchestrator
-    SMB -->|Port Violation| Orchestrator
-    AuditdSub -->|audit.log| Orchestrator
-
-    Orchestrator -->|Automated Drop Rule| IPTables
+    Actor -->|"cat / openat"| DecoyEnv
+    Actor -->|"LotL /dev/tcp/ or scanner"| HoneyPorts
+    DecoyEnv -.->|"Syscall event"| Auditd
+    Auditd -->|"/var/log/audit/audit.log"| Watcher
+    HoneyPorts -->|"3-way TCP handshake"| Watcher
+    Watcher --> PAM
+    Watcher --> Forensics
+    Watcher --> Notify
 ```
 
 ---
 
-## 🛠️ Implementation Status & Roadmap
+## Key Engineering Decisions
 
-- [x] **Phase 1: Perimeter Deception (Azure Cloud)**
-  - [x] Provision Debian 12 host with strict Network Security Groups (NSGs).
-  - [x] Move administrative SSH to port `TCP/2222` (Ed25519 key-based authentication only).
-  - [x] Deploy containerized Cowrie SSH/Telnet honeypot listening on standard `TCP/22`.
-  - [x] Harden egress filtering (`iptables` anti-relay rules blocking outbound SMTP and RFC 1918 pivoting).
-- [x] **Phase 2: Internal Deception & Kernel Telemetry**
-  - [x] Deploy lightweight socket-based SMB (`TCP/445`) honeyport listener in Python.
-  - [x] Place decoy medical records database (`/srv/clinica/ehr_backup.sql`) with synthetic patient data.
-  - [x] Configure Linux kernel audit daemon (`auditd`) rules with dedicated monitoring key.
-- [ ] **Phase 3: Active Response & Testing (In Progress)**
-  - [ ] Real-time log watcher and JSON parser for Cowrie and auditd alerts.
-  - [ ] Automated containment mechanism via dynamic `iptables` drop rules with fail-safe cooldown timers.
-  - [ ] Controlled penetration testing from offensive node (Kali Linux).
+- **Assume Breach Pivot (Cowrie Excluded):** Exploratory testing with containerized Cowrie consumed ~200 MB RAM and captured external Internet brute-force noise rather than post-compromise activity. Native Python + `auditd` dropped memory usage to **~10.6 MB** and focused detection on internal reconnaissance and credential access. See [archive/cowrie-exploratory/README.md](archive/cowrie-exploratory/README.md) and [docs/architecture.md](docs/architecture.md).
+- **PAM Identity Containment over `iptables`:** Blocking an IP does not terminate an already-authenticated session or safely handle loopback/NAT probes. Furthermore, `passwd -l` alone does **not** block SSH public-key logins—so containment chains `usermod --expiredate 1`, `passwd -l`, `chsh -s /usr/sbin/nologin`, and `pkill -KILL -u`.
+- **Living-off-the-Land (LotL) Detection:** Passive TCP sockets detect internal discovery even when tools like `netcat` or `nmap` are absent (validated with Bash native `/dev/tcp/`).
+- **GRC Traceability by Design:** Every emitted JSONL ticket maps directly to **ISO/IEC 27001:2022** (`A.8.16`, `A.5.18`, `A.8.20`) and **NIST CSF 2.0** (`DE.CM-01`, `PR.AA-05`, `RS.RP-01`). See [docs/grc-mapping.md](docs/grc-mapping.md).
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 azure-deception-telemetry-lab/
-├── README.md               # Project documentation and architectural overview
-├── docker/
-│   └── docker-compose.yml  # Containerized Cowrie honeypot deployment
+├── .github/workflows/
+│   └── ci.yml                             # Bytecode, shell syntax, JSONL & unittest CI
+├── archive/cowrie-exploratory/
+│   ├── README.md                          # ADR-001: why Cowrie was excluded
+│   └── docker-compose.yml                 # Exploratory phase Cowrie manifest
 ├── auditd/
-│   └── 99-medical.rules    # Kernel audit rules for decoy files and privilege escalation
+│   └── 99-medical.rules                   # Kernel audit rule (key: honeytoken_acceso)
+├── config/
+│   ├── pacientes_db_credenciales.env.example  # Sanitized decoy credentials template
+│   └── soc-orchestrator.env.example       # Runtime environment configuration template
+├── docs/
+│   ├── architecture.md                    # Threat model, ADRs & production hardening roadmap
+│   ├── grc-mapping.md                     # Asset CIA baseline, risk register & ISO/NIST mapping
+│   └── validation-playbook.md             # Reproducible Honeytoken & LotL /dev/tcp/ test steps
+├── examples/
+│   ├── ntfy_alert.sample.txt              # Sanitized push notification payload format
+│   └── soc_actions.sample.jsonl           # Sample forensic JSONL incident tickets
 ├── scripts/
-│   ├── honeyport.py        # Python listener for unauthorized port probes
-│   └── log_watcher.py      # Telemetry ingestion and automated iptables containment
-└── docs/
-    └── architecture.md     # In-depth network design, threat model, and SOPs
+│   ├── recover_account.sh                 # Post-containment account recovery helper
+│   └── setup_lab.sh                       # Debian 12 bootstrap & systemd installation
+├── src/
+│   ├── __init__.py
+│   └── soc_orchestrator.py                # Core daemon (auditd watcher, honeyports, SOAR)
+├── systemd/
+│   └── soc-orchestrator.service           # systemd service unit definition
+└── tests/
+    ├── __init__.py
+    └── test_soc_orchestrator.py           # Unit & ephemeral socket integration tests
 ```
 
 ---
 
-## 🚀 Quick Setup & Reproduction
+## Quick Verification & Usage
 
-### 1. Perimeter Honeypot Deployment
-Ensure Docker and Docker Compose are installed. Relocate the host's administrative SSH port before binding to port 22:
+### 1. Run Automated Tests (No Root Required)
+
 ```bash
-cd docker/
-docker compose up -d
+python3 -m unittest discover -s tests -v
 ```
 
-### 2. Kernel Telemetry Setup
-Load the honeytoken monitoring rules into the Linux Audit subsystem:
+### 2. Run in Dry-Run Mode (Local Development)
+
 ```bash
-sudo cp auditd/99-medical.rules /etc/audit/rules.d/
-sudo augenrules --load
-sudo auditctl -l
+python3 -m src.soc_orchestrator --dry-run --no-honeyports \
+  --target-user "$USER" \
+  --audit-log /tmp/test_audit.log \
+  --forensic-log /tmp/test_soc_actions.log
 ```
 
-### 3. Internal Honeyport Listener
-Execute the decoy listener with elevated permissions:
+### 3. Deploy on Debian 12 Lab VM (`srv-clinica-core`)
+
 ```bash
-sudo python3 scripts/honeyport.py
+sudo ./scripts/setup_lab.sh
+sudo journalctl -u soc-orchestrator.service -f
 ```
+
+See [docs/validation-playbook.md](docs/validation-playbook.md) for the Honeytoken (`cat`) and LotL (`/dev/tcp/127.0.0.1/3389`) validation steps, and `scripts/recover_account.sh` for safe account restoration.
 
 ---
 
-## 📄 Academic Context
-Developed as part of the *Diplomatura en Ciberseguridad Aplicada* final research project (TFI) / Cybersecurity Research Group (GIC - UTN FRLP). All patient records, credentials, and network logs used are strictly synthetic and isolated.
+## Academic & Scope Context
+
+Developed as part of the *Diplomatura en Ciberseguridad Aplicada* Final Integrative Project (TFI) at **Universidad Tecnológica Nacional — Facultad Regional La Plata (UTN FRLP)**. All patient records, accounts, credentials, and telemetry examples in this repository are strictly synthetic and isolated for defensive research.
 
 **Authors:** Lucio Angel & Emiliano Macias
